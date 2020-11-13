@@ -1,19 +1,35 @@
 <?php
+// Get File Info From ajax Requset
 $fileInfo = json_decode($_POST['fileInfo']);
-$new_file_name = 'chunkd/' . md5($fileInfo->name) . '.part' . (int)$_POST['part'];
-move_uploaded_file($_FILES['file']['tmp_name'], $new_file_name);
+// Get Data Form post and Decode Data
+$chunk = decode_chunk($_POST['file']);
 
-if ((int)$_POST['part'] == $fileInfo->total-1)  {
-    for ($i = 0; $i < $fileInfo->total; $i++) {
-        $new_file_name = 'chunkd/' . md5($fileInfo->name) . '.part' . $i;
-        $content = file_get_contents($new_file_name);
-        file_put_contents('uploads/' . $fileInfo->name, $content, FILE_APPEND);
-        unlink($new_file_name);
+// Put File Content at End of Same File
+file_put_contents('uploads/' . $fileInfo->name, $chunk, FILE_APPEND);
+// return response as json 
+$response = [
+    "fileInfo" => $fileInfo->name,
+    "status" => 200,
+    "part" => $fileInfo->part,
+    "total" => $fileInfo->total-1,
+];
+
+
+function decode_chunk($data)
+{
+    $data = explode(';base64,', $data);
+
+    if (!is_array($data) || !isset($data[1])) {
+        return false;
     }
+
+    $data = base64_decode($data[1]);
+    if (!$data) {
+        return false;
+    }
+
+    return $data;
 }
 
-echo json_encode([
-    'fileInfo' => $fileInfo->name,
-    'status' => 200,
-    'part' => (int)$_POST['part']
-]);
+header('Content-Type: application/json');
+echo json_encode($response);

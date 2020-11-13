@@ -16,15 +16,12 @@
 	var PublicAPI = {}; // Object for public APIs
 	var settings;
 	var File;
-	var Reader = '';
 	// Default settings
 	var defaults = {
 		fieldName: '#file-uploader',
-		chunkedSize: 1024 * 1024 * 10,
+		chunkedSize: 1024 * 1024 * 1 * 1, // 1024 * 1024 * 1 == 1mb
 		uploader: new UploaderHandler(),
 	};
-
-
 	//
 	// Methods
 	//
@@ -77,51 +74,53 @@
 	 * Methods
 	 */
 
-	// Get File DOM
+	// Get File DOM Info
 	var getFileInfo = function (event) {
 		File = event.target.files[0]
 	}
 
+	// handle submint  
 	let submitHandler = (event) => {
 		event.preventDefault()
 		if (!File)
 			return
-		Reader = new FileReader();
 		startUpload();
 	}
-	let startUpload = async (part = 0) => {
+	let startUpload = (part = 0) => {
 		// get Total Number of Pices
-		let ChunkPice = Math.ceil(File.size / settings.chunkedSize, settings.chunkedSize);
-		let next = (part < ChunkPice) ? settings.chunkedSize * (part + 1) - 1 : File.size;
+		let ChunkPice = Math.ceil(File.size / settings.chunkedSize, 1)
+		let start = part * settings.chunkedSize
+		let end = Math.min(((start + settings.chunkedSize)), File.size)
+		let FilePice = File.slice(start, end)
+		let formdata = new FormData()
+		let Reader = new FileReader()
 
-		settings.uploader.setEndPoint(settings.endPoint);
-		let FilePice = File.slice(part * settings.chunkedSize, next);
-
-		let formdata = new FormData();
-		formdata.append('file', FilePice);
 		formdata.append('fileInfo',
 			JSON.stringify({
 				name: File.name,
 				type: File.type,
-				uploadAt: new Date().getTime(),
-				total: ChunkPice
+				total: ChunkPice,
+				part: part
 			})
 		);
-		formdata.append('part', part);
 
-		if ((part <= ChunkPice))
-			Reader.addEventListener("load", function () { // Setting up base64 URL on image
-				console.log('asdasdasd');
-				settings.uploader.Start(formdata)
-				part++
-				startUpload(part)
+		settings.uploader.setEndPoint(settings.endPoint)
 
-			}, false);
+		Reader.addEventListener("load", function (event) { // Setting up base64 URL on image
+			if ((part < ChunkPice)) {
+				formdata.append('file', event.target.result)
+				settings.uploader.Start(formdata).then(
+					() => {
+						part++
+						startUpload(part)
+					}
+				).catch( (error) => {
+					console.log(error);
+				} )
+			}
+		}, false);
 
 		Reader.readAsDataURL(FilePice);
-		// await settings.uploader.Start(formdata).then(
-		// 	startUpload(part)
-		// ).catch()
 	}
 	/**
 	 * Initialize PublicAPI
@@ -166,26 +165,24 @@ function fetchUpload() {
 fetchUpload.prototype.Start = function (file) {
 	let data = fetch(this.endPoint, { // Your POST endpoint
 		method: 'POST',
-		headers: {
-			'Access-Control-Allow-Origin': '*',
-		},
+		cache: 'no-cache',
 		body: file // This is your file object
-	}).then(
-		response => response.json() // if the response is a JSON object
-	).catch(
-		error => console.log(error) // Handle the error response object
-	);
-	return data;
+	})
+		.then(response => response.json())
+		.then(result => {
+			console.log('Success:', result);
+		})
+	return data
 }
 fetchUpload.prototype.setEndPoint = function (url) {
 	this.endPoint = url;
 }
 
 function UploadXHR() { }
-UploadXHR.prototype.Start = function (file) {
+UploadXHR.prototype.Start = async function (file) {
 	xhr = new XMLHttpRequest();
 	xhr.open('POST', this.endPoint, true);
-	xhr.send(file);
+	await xhr.send(file);
 }
 UploadXHR.prototype.setEndPoint = function (url) {
 	this.endPoint = url;
@@ -198,5 +195,5 @@ function UploaderHandler(method = 'fetch') {
 		return new UploadXHR()
 }
 fileUploader.init({
-	endPoint: 'http://localhost/test/upload.php',
+	endPoint: './upload.php',
 });
