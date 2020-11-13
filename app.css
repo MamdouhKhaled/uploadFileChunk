@@ -1,0 +1,45 @@
+*,
+*:before,
+*:after {
+    box-sizing: border-box;
+}
+body,
+html {
+    margin: 0;
+    color: #5a5a5a;
+}
+.container {
+    width: 95%;
+    height: 100vh;
+    margin: 0 auto;
+}
+
+form {
+    width: 500px;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+input[type=file], input[type=submit] {
+    padding: 5px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    color: #000;
+}
+input[type=file] {
+    width: 79%;
+}
+input[type="submit"] {
+    width: 20%;
+    padding: 10px;
+    background-color: rgb(0, 174, 255);
+    border: none;
+    cursor: pointer;
+    transition: 500ms ease-in-out ;
+}
+input[type="submit"]:hover {
+    /* background-color: rgb(0, 174, 255, .8); */
+    background-color: red;
+}
